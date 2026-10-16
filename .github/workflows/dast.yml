@@ -1,0 +1,43 @@
+name: DAST ZAP
+
+on:
+  push:
+    paths: ["TIWAP/**", ".github/workflows/dast.yml"]
+  workflow_dispatch:
+
+jobs:
+  dast_zap:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: TIWAP
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Démarrer TIWAP et ZAP
+        run: |
+          mkdir -p reports && chmod 777 reports
+          docker compose up -d --build
+
+      - name: Attendre que TIWAP réponde
+        run: |
+          for i in $(seq 1 30); do
+            curl -ksf https://localhost:5000 > /dev/null && exit 0
+            sleep 5
+          done
+          docker compose logs app
+          exit 1
+
+      - name: Scan ZAP Baseline
+        run: docker compose exec -T zap zap-baseline.py -t https://app:5000 -m 2 -r zap-report.html -J zap-report.json -I
+
+      - name: Publier les rapports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: TIWAP/reports/
+
+      - name: Arrêter les services
+        if: always()
+        run: docker compose down -v
