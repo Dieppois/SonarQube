@@ -1,8 +1,9 @@
 # SonarQube : analyse de TIWAP
 
-Analyse de sécurité de [TIWAP](https://github.com/tombstoneghost/TIWAP), une application web volontairement vulnérable, avec SonarQube, puis correction d'une injection SQL que l'outil ne détecte pas.
+Analyse de sécurité de [TIWAP](https://github.com/tombstoneghost/TIWAP), une application web volontairement vulnérable, en deux temps :
 
-Le détail de la démarche et des résultats est dans [rapport.md](rapport.md).
+- analyse statique avec SonarQube, puis correction d'une injection SQL que l'outil ne détecte pas ([rapport.md](rapport.md)) ;
+- analyse dynamique avec OWASP ZAP ([rapport-owasp.md](rapport-owasp.md)).
 
 ## Contenu
 
@@ -31,6 +32,24 @@ SONAR_TOKEN=<jeton> docker compose run --rm -e SONAR_TOKEN scanner
 cd TIWAP
 python -m pytest tests -v
 ```
+
+## Analyse dynamique avec OWASP ZAP
+
+Scan de référence (Baseline Scan, passif) de TIWAP en fonctionnement. Le détail est dans [rapport-owasp.md](rapport-owasp.md).
+
+- `TIWAP/docker-compose.yml` : TIWAP, MongoDB et ZAP
+- `rapports-zap/` : rapports HTML et JSON du scan
+- `.github/workflows/dast.yml` : scan automatique à chaque modification de `TIWAP/`, rapports publiés en artefact
+
+```bash
+cd TIWAP
+mkdir -p reports
+docker compose up -d --build
+docker compose exec zap zap-baseline.py -t https://app:5000 -m 2 -r zap-report.html -J zap-report.json
+docker compose down
+```
+
+TIWAP est accessible sur https://localhost:5000 (certificat auto-signé). Les rapports sont écrits dans `TIWAP/reports/`.
 
 ## Licence
 
