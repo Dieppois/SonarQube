@@ -30,8 +30,7 @@ Lancement : `docker compose up -d --build`
 
 TIWAP démarre Flask avec un certificat auto-signé (`app.py:913`). L'application répond donc en **HTTPS** : `https://localhost:5000` depuis le navigateur, `https://app:5000` depuis le conteneur ZAP.
 
-![Conteneurs démarrés](captures/dast/01-docker-compose-ps.png)
-![TIWAP fonctionne localement](captures/dast/02-tiwap-login.png)
+![TIWAP fonctionne localement](captures/dast/02-tiwap-accueil.png)
 
 ## 2. Scan de référence
 
@@ -70,9 +69,6 @@ L'exploration est très limitée : ZAP n'est pas authentifié et toutes les page
 | Absence of Anti-CSRF Tokens (10202) | Medium (Low) | `<form method="post" action="/login">` | Formulaire de connexion uniquement, les formulaires derrière l'authentification n'ont pas été explorés | À confirmer | Analyse complémentaire avec un scan authentifié |
 | Server Leaks Version Information (10036) | Low (High) | `Server: Werkzeug/2.0.3 Python/3.6.15` | Réponses HTTP observées | Confirmé | Corriger |
 | Strict-Transport-Security Header Not Set (10035) | Low (High) | Toutes les réponses | Contexte : labo local, certificat auto-signé | Confirmé, sans impact en labo | Justifier, à gérer au reverse proxy en production |
-
-![Alerte Source Code Disclosure](captures/dast/05-zap-source-code-disclosure.png)
-
 ## 5. Pourquoi une alerte doit être vérifiée
 
 ### Erreur 500 sur /login : une alerte sous-évaluée
@@ -194,8 +190,14 @@ jobs:
 - `if: always()` : les rapports sont publiés et les conteneurs arrêtés même si une étape échoue.
 - Le dossier `reports/` est exclu de Git : les rapports de CI sont conservés comme artefacts.
 
+Le workflow s'est exécuté avec succès deux fois : sur la branche `owasp` (run #1, 2 min 6 s), puis sur `main` après la fusion de la pull request #1 (run #2, 1 min 53 s).
+
 ![Pipeline GitHub Actions](captures/dast/06-github-actions-pipeline.png)
 ![Artefact zap-report](captures/dast/07-github-actions-artefact.png)
+
+Rapports de l'artefact : [zap-report.html](rapports-zap/ci/zap-report.html) et [zap-report.json](rapports-zap/ci/zap-report.json)
+
+Le scan de la CI relève 17 types d'alertes contre 18 en local : « Missing Anti-clickjacking Header » (10020) n'apparaît pas. L'exploration n'a pas parcouru exactement les mêmes réponses. Deux scans d'une même application ne sont donc pas parfaitement identiques, et une alerte qui disparaît n'est pas forcément corrigée : il faut le vérifier dans la réponse HTTP.
 
 Limite : l'artefact HTML et JSON n'alimente aucun tableau de bord. Pour suivre les vulnérabilités dans GitHub (onglet Security), il faudrait convertir le rapport au format SARIF.
 
